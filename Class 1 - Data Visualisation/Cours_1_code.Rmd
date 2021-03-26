@@ -1,0 +1,242 @@
+---
+title: "Class 1 - code"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# How to generate a table
+
+```{r}
+library(kableExtra)
+example <- read.csv("ozoneNA.csv")
+example[1:4, c("WindDirection", "maxO3", "T9", "Ne9", "Vx15")] %>%
+  kbl() %>%
+  kable_styling()
+```
+
+# Fancy plots seen in class
+
+
+```{r}
+library(ggplot2)
+library(lubridate)
+theme_set(theme_bw())
+
+df <- economics[, c("date", "psavert", "uempmed")]
+df <- df[lubridate::year(df$date) %in% c(1967:1981), ]
+
+# labels and breaks for X axis text
+brks <- df$date[seq(1, length(df$date), 12)]
+lbls <- lubridate::year(brks)
+
+# plot
+ggplot(df, aes(x=date)) + 
+  geom_line(aes(y=psavert, col="psavert")) + 
+  geom_line(aes(y=uempmed, col="uempmed")) + 
+  labs(title="Time Series of Returns Percentage", 
+       subtitle="Drawn From Wide Data format", 
+       caption="Code's source: http://r-statistics.co/", y="Returns %") +  # title and caption
+  scale_x_date(labels = lbls, breaks = brks) +  # change to monthly ticks and labels
+  scale_color_manual(name="", 
+                     values = c("psavert"="#00ba38", "uempmed"="#f8766d")) +  # line color
+  theme(panel.grid.minor = element_blank())  # turn off minor grid
+
+
+library(ggExtra)
+data(mpg, package="ggplot2")
+# mpg <- read.csv("http://goo.gl/uEeRGu")
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+mpg_select <- mpg[mpg$hwy >= 35 & mpg$cty > 27, ]
+g <- ggplot(mpg, aes(cty, hwy)) + 
+  geom_count() + 
+  geom_smooth(method="lm", se=F)
+
+ggMarginal(g, type = "histogram", fill="transparent")
+# ggMarginal(g, type = "density", fill="transparent")
+
+
+library(ggthemes)
+options(scipen = 999)  # turns of scientific notations like 1e+40
+
+# Read data
+email_campaign_funnel <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/email_campaign_funnel.csv")
+
+# X Axis Breaks and Labels 
+brks <- seq(-15000000, 15000000, 5000000)
+lbls = paste0(as.character(c(seq(15, 0, -5), seq(5, 15, 5))), "m")
+
+# Plot
+ggplot(email_campaign_funnel, aes(x = Stage, y = Users, fill = Gender)) +   # Fill column
+                              geom_bar(stat = "identity", width = .6) +   # draw the bars
+                              scale_y_continuous(breaks = brks,   # Breaks
+                                                 labels = lbls) + # Labels
+                              coord_flip() +  # Flip axes
+                              labs(title="Email Campaign Funnel") +
+                              theme_tufte() +  # Tufte theme from ggfortify
+                              theme(plot.title = element_text(hjust = .5), 
+                                    axis.ticks = element_blank()) +   # Centre plot title
+                              scale_fill_brewer(palette = "Dark2")  # Color palette
+```
+
+
+
+
+
+```{r}
+library(gapminder)
+library(gganimate)
+
+p <- ggplot(
+  gapminder, 
+  aes(x = gdpPercap, y=lifeExp, size = pop, colour = continent)
+  ) +
+  geom_point(alpha = 0.7) +
+  scale_color_viridis_d() +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  labs(x = "GDP per capita", y = "Life expectancy")
+p
+```
+
+
+```{r}
+p + facet_wrap(~continent) +
+  transition_time(year) +
+  labs(title = "Year: {frame_time}")
+
+#https://www.datanovia.com/en/blog/gganimate-how-to-create-plots-with-beautiful-animation-in-r/
+```
+
+
+
+```{r}
+library(plyr)
+library(scales)
+library(zoo)
+
+df <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/yahoo.csv")
+df$date <- as.Date(df$date)  # format date
+df <- df[df$year >= 2012, ]  # filter reqd years
+
+# Create Month Week
+df$yearmonth <- as.yearmon(df$date)
+df$yearmonthf <- factor(df$yearmonth)
+df <- ddply(df,.(yearmonthf), transform, monthweek=1+week-min(week))  # compute week number of month
+df <- df[, c("year", "yearmonthf", "monthf", "week", "monthweek", "weekdayf", "VIX.Close")]
+
+
+# Plot
+ggplot(df, aes(monthweek, weekdayf, fill = VIX.Close)) + 
+  geom_tile(colour = "white") + 
+  facet_grid(year~monthf) + 
+  scale_fill_gradient(low="red", high="green") +
+  labs(x="Week of Month",
+       y="",
+       title = "Time-Series Calendar Heatmap", 
+       subtitle="Yahoo Closing Price", 
+       fill="Close")
+
+```
+
+
+# Small simulation for correlation coefficient
+
+```{r}
+library(MASS)
+Ns <- seq(2, 200, by=10)
+corr_coeff <- c()
+for (n in Ns){
+  x1 <- rnorm(n, mean = 0, sd = 1)
+  x2 <- rnorm(n, mean = 0, sd = 1)
+  corr_coeff <- c(corr_coeff, cor(x1, x2, method = "pearson"))
+}
+data_to_plot <- data.frame("n" = Ns,
+                           "Correlation" = corr_coeff)
+ggplot(data_to_plot, aes(x = Ns, y = Correlation)) +
+  geom_point(color = "blue") +
+  geom_line(color = "blue", alpha = 0.5) +
+  theme_bw() +
+  xlab("n") +
+  ylab("Empirical correlation")
+```
+
+
+```{r}
+x1 <- rnorm(5, mean = 0, sd = 1)
+x2 <- rnorm(5, mean = 0, sd = 1)
+res <- cor.test(x1, x2, method="pearson")
+res
+```
+
+```{r}
+x1 <- rnorm(10000, mean = 0, sd = 1)
+x2 <- rnorm(10000, mean = 0, sd = 1)
+res <- cor.test(x1, x2, method = "pearson")
+res
+```
+
+
+
+# Small simuation for somnifere
+
+```{r}
+library(tidyr)
+data <- data.frame("control" = rnorm(30, mean = 7, sd = 1),
+                   "treatment1" = rnorm(30, mean = 8, sd = 1),
+                   "treatment2" =  rnorm(30, mean = 8, sd = 2))
+
+data <- pivot_longer(data, names_to = "sample", values_to = "data", cols = c("control", "treatment1", "treatment2"))
+
+ggplot(data, aes(x = sample, y = data, color = sample)) +
+  geom_violin() +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  xlab("") +
+  ylab("Sleeping time (hours)") +  
+  stat_summary(fun.data = mean_cl_normal, width=0.1, conf.int = 0.95)
+```
+
+
+```{r}
+control <- rnorm(100, mean = 7, sd = 1)
+sample1 <- rnorm(100, mean = 8, sd = 1)
+sample2 <- rnorm(100, mean = 8, sd = 2)
+
+data <- data.frame("control" = control,
+                   "treatment1" = sample1,
+                   "treatment2" =  sample2)
+
+data <- pivot_longer(data, names_to = "sample", values_to = "data", cols = c("control", "treatment1", "treatment2"))
+
+ggplot(data, aes(x = sample, y = data, color = sample)) +
+  geom_violin() +
+  geom_jitter(width = 0.2, alpha = 0.1) +
+  xlab("") +
+  ylab("Sleeping time (hours)") +  
+  stat_summary(fun.data = mean_cl_normal, width=0.1, conf.int=0.95)
+```
+
+
+```{r}
+t.test(control, sample2)
+```
+
+
+# Small simulation for coin flips
+
+For full example, see Susan Holmes statistical book
+
+```{r}
+set.seed(123)
+numFlips = 100
+probHead = 0.6
+coinFlips = sample(c("H", "T"), size = numFlips,
+  replace = TRUE, prob = c(probHead, 1 - probHead))
+head(coinFlips)
+```
+
+

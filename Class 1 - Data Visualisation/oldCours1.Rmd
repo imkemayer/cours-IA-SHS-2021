@@ -1,0 +1,547 @@
+---
+title: 'Class 1: Data visualization and exploration'
+author: Julie Josse, Gaël Varoquaux, and Bénédicte Colnet
+date: "Lundi 18 Janvier 2021"
+fontsize: 10pt
+output:
+  xaringan::moon_reader:
+    chakra: "https://cdnjs.cloudflare.com/ajax/libs/remark/0.14.0/remark.min.js"
+    lib_dir: libs
+    css: [default, "../css/template.css", "../css/fonts.css"]
+# output:
+#   beamer_presentation:
+#     colortheme: seahorse
+#     fonttheme: structurebold
+#     theme: metropolis
+#     latex_engine: xelatex # pdflatex also works here
+#   ioslides_presentation: default
+# header-includes: \widowpenalties 1 150
+# titlefont: "Titillium Web" # Try out some font options if xelatex
+---
+
+# Purpose of the class
+
+
+At the end of this class you will be able to start a ***data exploration*** in `R`. 
+--
+
+## It includes:
+
+- Load and preview data;
+
+- Visualize data;
+
+- Compute basic statistical metrics such as mean, median, correlation coefficient;
+
+- Run standard statistical tests;
+
+- Be aware of typical bias (Simpson paradox)
+
+---
+
+## Data exploration
+
+This term first appeared in a book from John Tukey (1977).
+
+*Practice of inspecting, and exploring your data, before stating hypotheses, fitting predictors, and other more ambitious inferential goals. It typically includes the computation of simple summary statistics which capture some property of interest in the data, and visualization.*
+
+Note that this is assumption-free.
+
+---
+
+## Notations
+
+We will (try to!) have as less as possible the need of mathematical formula. This is the minimum notation you should keep in mind:
+
+- $n$ is the number of observation in a data set
+- $p$ is the number of covariates by observation 
+- $X$ is usually a matrix of size n x p
+- $Y$ is usually a vector of size n x 1
+
+---
+
+## Typical statistical quantities
+
+
+- $\mathbb{E}[Y]=\int y d \mathrm{P}(dy)$ if $Y$ is continuous or $\mathbb{E}[Y]=\sum_{i=1}^{N} y_{i} p_{i}$ if $Y$ is discrete and can take $N$ different values.
+
+
+- $\sigma(Y)=\sqrt{\mathbb{E}\left[(Y-\mathbb{E}[Y])^{2}\right]}=\sqrt{\mathbb{E}\left[Y^{2}\right]-\mathbb{E}[Y]^{2}}$
+
+---
+
+## How to load data?
+
+(Classical) data are generally contained within a file in which the individuals are presented in rows and the variables in columns. 
+
+
+The classical way to read a data file is to use the function \texttt{read.table} or \texttt{read.csv}.
+
+```{r}
+ozone <- read.table("ozoneNA.csv",
+                  header=TRUE, 
+                  sep=",", 
+                  row.names=1) 
+
+```
+
+---
+
+# Univariate analysis
+
+
+## First: look at your data!
+
+Here we have at our disposal 112 observations collected during the summer of 2001 in Rennes. The variables available are
+
+- maxO3 (maximum daily ozone)
+- maxO3v (maximum daily ozone the previous day)
+- T12 (temperature at midday)
+- T9
+- T15 (Temp at 3pm)
+- Vx12 (projection of the wind speed vector on the east-west axis at midday)
+- Vx9 and Vx15 as well as the Nebulosity (cloud) Ne9, Ne12, Ne15
+
+Before any analysis an important point is to visualize the data. 
+For example you can print the dimension of the dataframe stored in the object \texttt{ozone}.
+
+```{r}
+dim(ozone) 
+```
+
+The dataframe can be investigated in more details using the commands \texttt{head()} and \texttt{summary()}.
+
+\texttt{head()} proposes to observe the first rows.
+
+\tiny
+```{r}
+head(ozone)
+```
+\normalsize
+
+
+\texttt{summary()} details the data type of each column.
+\tiny
+```{r}
+summary(ozone)
+```
+\normalsize
+
+## Basic manipulation of a data frame{.allowframebreaks}
+
+All the column names can be retrieved with the command \texttt{names()}.
+\footnotesize
+```{r}
+names(ozone)
+```
+\normalsize
+A column can be selected and analyzed with the following commands:
+\footnotesize
+```{r}
+colunm_maxO3 <- ozone$maxO3
+min(colunm_maxO3, na.rm = TRUE)
+max(colunm_maxO3, na.rm = TRUE)
+mean(colunm_maxO3, na.rm = TRUE)
+sd(colunm_maxO3, na.rm = TRUE)
+```
+\normalsize
+
+Note that the option \texttt{na.rm = TRUE} is necessary because the data contain missing value. If not the output will be a missing value.
+
+\footnotesize
+```{r}
+mean(colunm_maxO3)
+```
+\normalsize
+
+## Two important data type in R
+
+In statistics the data can be of two types: 
+\begin{itemize}
+\item \textbf{qualitatives} \\
+For example colors, or gender.
+\item \textbf{quantitatives} \\
+For exemple a salary, or heigth.
+\end{itemize}
+
+You have to be careful, whenever you replace colors by numbers (for example red with 0 and blue with 1), the data type will be set to numerical (so quantitative) and the computer can do operation on it. For example blue will be considered bigger than red, which has no meaning.
+
+The command \texttt{summary()} already allows you to observe your data type, another command is possible with \texttt{str()}.
+
+
+## Illustration of the data type on Ozone
+
+
+```{r}
+table(ozone$WindDirection)
+```
+
+```{r}
+test <- ozone$maxO3 + ozone$T9
+mean(test, na.rm = TRUE)
+```
+
+```{r}
+test <- ozone$maxO3 + ozone$WindDirection
+```
+
+## Visualisation: ggplot2
+
+In this class we use the package \texttt{ggplot2} (implementation by Hadley Wickam). A \texttt{ggplot2} object will have the following elements\footnote{This description comes from http://www.john-ros.com/}:
+
+- *Data* the data frame holding the data to be plotted.
+
+- *Aes* defines the mapping between variables to their visualization.
+
+- *Geoms* are the objects/shapes you add as layers to your graph.
+
+- *Stats* are statistical transformations when you are not plotting the raw data, such as the mean or confidence intervals.
+
+
+## Visualisation of quantitative variable: histogram
+
+```{r}
+library(ggplot2)
+ggplot(ozone, aes(x = maxO3)) +  
+  geom_histogram(bins = 10, # important parameter!
+                 alpha = 0.5, # transparency
+                 color = "blue", #border
+                 fill = "pink") +
+  theme_bw()
+```
+
+
+## Visualisation of a categorical variable: barplot
+
+```{r, fig.height = 2, fig.width = 4.5, fig.align = "center"}
+ggplot(ozone, aes(x = WindDirection)) +  
+  geom_histogram(stat = "count", # note the difference!
+                 alpha = 0.5, # transparency
+                 color = "cyan",
+                 fill = "blue") +
+  theme_bw()
+```
+
+## Visualisation of all quantitative variables: reshaping data 
+
+```{r}
+library(reshape) # allows to reshape a table
+ozone_for_boxplot <- melt(
+  as.data.frame(
+    ozone[,names(ozone) != "WindDirection"]
+    )
+  )
+```
+
+\tiny
+```{r, echo = FALSE}
+head(ozone_for_boxplot)
+```
+\normalsize
+
+## Visualisation of all quantitative variables: boxplot
+
+```{r, fig.height = 2, fig.width = 4.5, fig.align = "center"}
+ggplot(ozone_for_boxplot, aes(x = variable, y = value)) +  
+  geom_boxplot() +
+  theme_bw()
+```
+
+
+## Summarizing data: one Variable
+
+- Statistic for a quantitative variable
+\footnotesize
+Quartiles, percentile, mean, median, range, variance, standard deviation
+\normalsize
+
+- Statistics for a categorical variable: 
+\footnotesize
+Frequency
+\normalsize
+
+- Plots\footnote{Ideally you should avoid pie chart}
+\footnotesize
+Histogram, boxplot, bar chart
+\normalsize
+
+
+# Bivariate analysis
+
+## Correlation coefficient
+
+- Very popular metric
+- Useful but contains limits
+- The Pearson coefficient is the most used\footnote{But others exist!}:
+ 
+
+$$\rho_{Z, Y}=\frac{\mathbb{E}[Z Y]-\mathbb{E}[Z] \mathbb{E}[Y]}{\sigma_{Z} \sigma_{Y}}$$
+\footnotesize
+where $\sigma_{Z}$ is the standard deviation of $Z$ and $\sigma_{Y}$ is the standard deviation of $Y$
+\normalsize
+
+- $\rho_{Z, Y} = 1$: implies that a linear equation describes the relationship between $Z$ and $Y$ perfectly
+- $\rho_{Z, Y} = 0$: no linear relationship between $Z$ and $Y$
+
+## Correlation coefficient: application in R{.allowframebreaks}
+
+We can observe the Pearson correlation between temperature at 12pm and 3pm. 
+
+```{r}
+cor(ozone$T12,
+    ozone$T15,
+    method = "pearson", 
+    use = "complete.obs")
+```
+As expected it shows a high correlation coefficient.
+
+We can observe the data to see if it seems coherent. 
+
+For this we also use the ggplot2 package but to present a so-called scatter plot.
+```{r, warning = F, fig.height = 2, fig.width = 3, fig.align = "center"}
+library(ggplot2)
+ggplot(ozone, aes(x = T12, y =  T15)) +
+  geom_point() + 
+  theme_bw()
+```
+
+The linearity between the two variables seems to be a correct hypothesis.
+
+## Correlation coefficient: an apparently simple example
+We create a function that simulate two vectors from a Gaussian distribution (mean being 0, and standard deviation being 1) of size $n$. We first choose $n =2$, then we do it up to $500$.
+
+```{r, echo = FALSE, fig.height = 2, fig.width = 4.5, fig.align = "center"}
+library(MASS)
+Ns <- 2:500
+corr_coeff <- c()
+for (n in Ns){
+  x1 <- rnorm(n, mean = 0, sd = 1)
+  x2 <- rnorm(n, mean = 0, sd = 1)
+  corr_coeff <- c(corr_coeff, cor(x1, x2, method = "pearson"))
+}
+data_to_plot <- data.frame("n" = Ns,
+                           "Correlation" = corr_coeff)
+ggplot(data_to_plot, aes(x = Ns, y = Correlation)) +
+  geom_point(color = "blue") +
+  geom_line(color = "blue", alpha = 0.5) +
+  theme_bw() +
+  xlab("n") +
+  ylab("Correlation")
+```
+
+Comment. What should we do?
+
+## Correlation coefficient: test with ozone data
+
+```{r}
+res <- cor.test(ozone$T12,
+                ozone$T15,
+                method="pearson",
+                use = "complete.obs")
+res
+```
+
+## Correlation coefficient: test with a small data set
+
+First we do this with only 5 observations:
+```{r, echo = FALSE}
+x1 <- rnorm(5, mean = 0, sd = 1)
+x2 <- rnorm(5, mean = 0, sd = 1)
+res <- cor.test(x1, x2, method="pearson")
+res
+```
+
+## Correlation coefficient: test with a bigger data set
+
+We repeat the previous test with 10000 observations:
+
+```{r, echo = FALSE}
+x1 <- rnorm(10000, mean = 0, sd = 1)
+x2 <- rnorm(10000, mean = 0, sd = 1)
+res <- cor.test(x1, x2, method="pearson")
+res
+```
+
+
+## Correlation: reflects only linear relationship
+
+All these data\footnote{package \texttt{datasauRus}, idea from from Robert Grant} have same mean, sd, and correlation coefficient!
+
+```{r, echo = FALSE, fig.height = 2.5, fig.width = 4.5, fig.align = "center"}
+library(datasauRus)
+ggplot(datasaurus_dozen[datasaurus_dozen$dataset %in% c("dino", "star", "away"),], aes(x=x, y=y, colour=dataset))+
+  geom_point()+
+  theme_void()+
+  theme(legend.position = "none")+
+  facet_wrap(~dataset)
+```
+
+## Correlation is not causation
+http://tylervigen.com/spurious-correlations
+
+## An apparently simple conclusion
+
+Covid-19 case fatality rates between China and Italy: 44 672 cases from China with early reports from Italy (9th March)
+
+```{r, echo=FALSE, out.width="50%", fig.cap="Screenshot from J. von Kügelgen et al., 2020"}
+#knitr::include_graphics("./italy_china")
+```
+
+## Simpson paradox
+
+
+```{r, echo=FALSE, out.width="90%", fig.cap="Screenshot from J. von Kügelgen et al., 2020"}
+#knitr::include_graphics("./italy_china_age")
+```
+
+
+## Only seeing can even lead to wrong conclusions!
+
+```{r, echo=FALSE, out.width="70%", fig.cap="Screenshot from J. von Kügelgen et al., 2020"}
+#knitr::include_graphics("./italy_china_case")
+```
+
+Complete article: *Simpson's paradox in Covid-19 case fatality rates: a mediation analysis of age-related causal effects* from Julius von Kügelgen, Luigi Gresele, Bernhard Schölkopf
+
+
+## Statistical tests
+
+How we can draw conclusions or make decisions based on finite samples of data?
+
+- Clinical trials and efficacy;
+
+- Economic experiments;
+
+- Screening genetic variants for associations with a phenotype, and many others.
+
+```{r, echo=FALSE, out.width="30%", fig.cap="Modern Statistics for Modern Biology, Chap 6., Susan Holmes", fig.align = 'center'}
+#knitr::include_graphics("./test")
+```
+
+
+## An example: coin tossing{.allowframebreaks}
+
+For example, suppose we are flipping a coin to see if it is fair. 
+We flip the coin 100 times. Results type are:
+
+```{r, echo = FALSE}
+set.seed(123)
+numFlips = 100
+probHead = 0.6
+coinFlips = sample(c("H", "T"), size = numFlips,
+  replace = TRUE, prob = c(probHead, 1 - probHead))
+head(coinFlips)
+```
+
+\pause
+
+If the coin is fair, we would expect half of the time to get heads. We can compute how many heads we obtained on the 100 flips.
+```{r}
+table(coinFlips)
+```
+
+\pause
+The number of heads obtained in 100 independent tosses of a coin is:
+
+$$P(K=k \mid 100, p)=\left(\begin{array}{c}100 \\ k\end{array}\right) p^{k}(1-p)^{100-k}$$
+
+Where $p$ is the probability of heads.
+
+\footnotesize
+Notations' tips: 
+
+- The first term reads as: the probability that the observed value for $K$ is 
+$k$, given the values of $n$ and $p$ ($p$ is the parameter of our problem).
+
+- The big $K$ is all the possible values we can have (here from 0 to 100), and $k$ is the value observed. Statisticians usually write the difference.
+\normalsize
+
+
+We implement the previous equation. Note that the binomial is already implemented in \texttt{R} with \texttt{dbinom}:
+```{r, echo = FALSE}
+library(tibble)
+k = 0:numFlips
+numHeads = sum(coinFlips == "H")
+binomDensity = tibble(k = k,
+     p = dbinom(k, size = numFlips, prob = 0.5))
+head(binomDensity)
+```
+
+```{r, fig.height = 3, fig.width = 4, fig.align = "center"}
+ggplot(binomDensity) +
+  geom_bar(aes(x = k, y = p), stat = "identity") +
+  geom_vline(xintercept = numHeads, col = "blue") +
+  theme_classic()
+```
+
+We observe that the most likely number -- as expected -- is 50, and other numbers near 50 are also likely. But at which point could we consider this was not just bad luck?
+
+Statisticians divide the set of all possible $k$ (0 to 100) in complementary regions: a rejection region and a region of no rejection.
+
+The common threshold is $\alpha = 0.05$ meaning that if the observed $k$ is in a region which probability is lower than 0.05 then the null-hypothesis is rejected.
+
+
+```{r, echo = F, earning = F}
+library(dplyr) # arrange function
+```
+
+
+Here we use the explicit summation using \texttt{cumsum} but \texttt{R} provides the cumulative distribution functions.
+
+```{r, fig.height = 3, fig.width = 4, fig.align = "center"}
+alpha = 0.05
+binomDensity = arrange(binomDensity, p) %>%
+        mutate(reject = (cumsum(p) <= alpha))
+
+ggplot(binomDensity) +
+  geom_bar(aes(x = k, y = p, fill = reject), stat = "identity") +
+  scale_fill_manual(
+    values = c(`TRUE` = "red", `FALSE` = "darkgrey")) +
+  geom_vline(xintercept = numHeads, col = "blue") +
+  theme_classic()
+```
+
+
+## Using implemented function
+
+We state the null-hypothesis $\mathbb{H}_0:  p=0.5$. 
+
+In our example we observe 60 heads. We can use the implemented function:
+
+\footnotesize
+```{r}
+binom.test(x = numHeads, n = numFlips, p = 0.5)
+```
+\normalsize
+We conclude that the coin is fair, but you can observe that it depends on the confidence level you fixed!
+
+## The t-test
+
+
+## Ressources
+
+Plenty of ressources are available online on data exploration and statistics with \texttt{R}. 
+
+**Basics**
+
+- TedX on data visualisation
+
+- Starting with Rstudio, advanced statistics: http://larmarange.github.io/analyse-R/
+
+
+**Advanced**
+
+- With a focus on biological processes: Susan Holmes' book "Modern Statistics for Modern Biology" (available online)
+- Introduction to econometrics with R (SciencesPo): https://scpoecon.github.io/ScPoEconometrics/index.html
+
+**Funny**
+
+- To play down statistics and random variables: *La statistiques expliquée à mon chat*, on Youtube.
+
+
+# Additional topics
+
+## Interactive plots
+
+## p-value: what is it? 
+

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Introduction to causal inference</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Bénédicte Colnet" />
+    <script src="causal_introduction_files/header-attrs-2.6/header-attrs.js"></script>
+    <link href="causal_introduction_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="causal_introduction_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="causal_introduction_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Introduction to causal inference
+### Bénédicte Colnet
+### Lundi 29 Mars 2021
+
+---
+
+
+# Outline
+
+## Purpose of this class
+
+- Give you an insight of a causal (or non-causal) interpretation of data;
+
+- Ideas for practical approach.
+
+## Ressources
+
+
+**Books**
+- *Mostly Harmless Econometrics*, Joshua Angrist, 2008
+- *The Book of Why, Judea Pearl*, Judea Pearl, Dana Mackenzie, 2018
+
+**Talks**
+- One of Esther Duflo's talks
+- Jonas Peter's class on Youtube
+- *A Crash Course in Causality* on Coursera
+
+---
+# Correlation is not Causation (1)
+
+
+First, because it can be spurious,
+
+&lt;img src="./img/spurious.png" width="70%" style="display: block; margin: auto;" /&gt;
+
+
+---
+# Correlation is not Causation (2)
+
+Second, because correlation can just reflect an association,
+
+&lt;img src="./img/chocolate.png" width="50%" style="display: block; margin: auto;" /&gt;
+&lt;sub&gt; Source: Figure published in Messerli (2012) Chocolate Consumption, Cognitive Function, and Nobel Laureates, New England Journal of Medicine &lt;/sub&gt;
+
+
+---
+
+# Causality
+
+A word we all know,
+
+&gt;*As a human being, you are already innately familiar with causal inference’s fundamental concepts. Through sheer existence, you know what a causal effect is, understand the difference between association and causation, and you have used this knowledge consistently throughout your life.*
+
+&gt; Miguel Hernan, Causal inference, What if?
+
+--
+
+Is the answer in data?
+
+&gt;*“[...] falsely believing that the answers to all scientific questions reside in the data, to be unveiled through clever data-mining tricks. Much of this data-centric history still haunts us today. We live in an era that presumes Big Data to be the solution to all our problems. Courses in “data science” are proliferating in our universities, and jobs for “data scientists” are lucrative in the companies that participate in the “data economy.” But I hope with this book to convince you that data are profoundly dumb.”*
+
+&gt; Judea Pearl, The Book of Why: The New Science of Cause and Effect
+
+
+
+---
+# Why do we care?
+
+Many of the *questions* you might encounter are causal.
+
+--
+
+- *Social sciences*: Why do people behave in the way they do?
+- *Health sciences*: Why do people get sick? Which medicine can cure them?
+
+--
+
+Which is **totally different** as:
+
+- *Social sciences*: Can I predict the behavior of this individual?
+- *Health sciences*: Can I predict the probability of this individual to get Alzheimer with the genotype?
+--
+
+&gt; 📚 The second type of question is prediction (i.e, Machine Learning).
+
+--
+
+To convince yourself, remember the linear regression class. 
+
+- The model could predict `\(Y\)` with `\(X\)`...
+
+- ..but it was hard to interpret coefficients, 
+
+
+- ..and even harder to go from variable importance to causality!
+
+
+
+
+---
+# Machine Learning VS Causal inference
+
+
+Most *Artificial Intelligence* tasks only care about **prediction**
+
+*Example*: predicting whether a photo is of a dog or a cat is vital to how Google Images works, but it doesn't care what element in a photo of a dog or a cat makes it unambiguously recognizable as being a dog or a cat
+ 
+--
+
+Let's take the rooster example:
+
+&lt;img src="./img/rooster.jpeg" width="50%" style="display: block; margin: auto;" /&gt;
+
+&lt;sub&gt;Source: J. Pearl, and for image https://www.trialrun.us/&lt;/sub&gt;
+
+--
+
+**Causal inference**: We want to predict what would happen if we change
+the system.
+
+*What would happen if I give a somnifer to the rooster?*
+
+---
+# Examples of causal questions
+
+-  Is there an effect of financial incentives on teacher performance (measured both directly by teacher absences and indirectly by educational output measures, such as average class test scores)? (Esther Duflo's work)
+
+- How does the type of school affect a child's later achievements?
+
+- Do the students succeed because of the new teacher? 
+Had the students remained with the old teacher, wouldn't they have
+succeeded
+
+- Effect of reducing car traffic on air pollution 
+
+- Do job training programs raise average future income?
+
+- Is there an effect of social pressure on voter participation?  Neighbors mailing:  the recent voting record of everyone on their households would be sent to all their neighbors.
+
+- What is the effect of hydroxychloroquine on mortality?
+
+---
+# Concept of causality
+
+
+__Causality__: what are we talking about? 
+
+- We say that `X` *causes* `Y`
+
+  - if we were to intervene and *change* the value of `X` ***without changing anything else***...
+  - then `Y` would also change ***as a result***.
+  
+&gt; Example `X = sunshine` and `Y = a singing rooster`.
+
+⚠️ It does **NOT** mean that `X` is the only factor that causes `Y`.  
+--
+
+--
+
+.pull-left[
+Some people wants to look what causes what (which `X` causes `Y`).
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/pearl.jpeg" alt="J. Pearl" width="20%" /&gt;
+&lt;p class="caption"&gt;J. Pearl&lt;/p&gt;
+&lt;/div&gt;
+
+]
+
+--
+
+.pull-right[
+
+Other people wants to measure the impact of `X` on `Y`. 
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/rubin.jpeg" alt="D. Rubin" width="30%" /&gt;
+&lt;p class="caption"&gt;D. Rubin&lt;/p&gt;
+&lt;/div&gt;
+
+]
+
+---
+# Lung cancer (1)
+
+Does smoking cause lung cancer?
+
+&lt;img src="./img/lung.png" width="70%" style="display: block; margin: auto;" /&gt;
+&lt;sub&gt;Credits: cancer.org and [rapidshift](http://www.rapidshift.net/how-scientific-causation-came-to-be-solidified-in-the-tobacco-use-vs-lung-cancer-death-rates-era-relevance-to-climate-skeptics-now/)&lt;/sub&gt;
+
+---
+# Lung cancer (2)
+
+Today the answer seems obvious, but back to the 1950's it was a debate with a big increase in deaths which is happening after a fast growth in cigarette consumption.
+
+--
+ But at the time:
+ - Other possible causes, such as general greater air pollution;
+ - And smokers were not randomly selected, but had a certain typical age, education, income, etc.
+ 
+ How can we conclude?
+ 
+--
+
+💡 Note that in the current media similar debats exist, for example with bees and neonicotinoids, polyphenol a and hormones, round-up, others.
+
+---
+#  Class size
+
+Another example is class size and student's achievement. What would you do or not do with such data?
+
+.pull-left[
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/histogram_class_size.png" alt="DEPP" width="60%" /&gt;
+&lt;p class="caption"&gt;DEPP&lt;/p&gt;
+&lt;/div&gt;
+
+]
+
+--
+.pull-right[
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/histogram_class_size_with_categ.png" alt="DEPP" width="100%" /&gt;
+&lt;p class="caption"&gt;DEPP&lt;/p&gt;
+&lt;/div&gt;
+]
+ 
+
+
+---
+# Randomized Experiments
+
+- Often called **R**andomized **C**ontrolled **T**rials (RCT).
+
+- The first RCTs were conducted a long time ago (18th and 19th century), mainly in **Medecine**. 
+
+- In the beginning of the 20th century they were popularized by famous statisticians like **J. Neyman** or **R.A. Fisher**. 
+
+- Since then they have had a growing influence. 
+
+- As for economics, the **2019 Nobel Price in Economics** was awarded to three exponents of RCTs, [Abhijit Banerjee, Esther Duflo and Michael Kremer](https://www.economist.com/finance-and-economics/2019/10/17/a-nobel-economics-prize-goes-to-pioneers-in-understanding-poverty), "for their experimental approach to alleviating global poverty".
+
+---
+# Potential outcome framework
+
+Treatment `\(W\)`, `\(X\)` covariates, `\(Y\)` the outcome, so that:
+
+`\(\left(X_{i}, W_{i}, Y_{i}(1), Y_{i}(0)\right) \in \mathcal{X} \times\{0,1\} \times \mathbb{R} \times \mathbb{R}\)`
+
+--
+
+🤨 If I want to know the effet of `\(W\)` on the subect `\(i\)`, what is this quantity?
+
+--
+
+`$$\Delta_i \triangleq Y_i(1) - Y_i(0)$$`
+--
+
+Sadly, we have a missing problem: `\(\Delta_i\)` never observed (only observe one outcome/indiv) 😅
+
+--
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/datatype.png" alt="Typical data" width="70%" /&gt;
+&lt;p class="caption"&gt;Typical data&lt;/p&gt;
+&lt;/div&gt;
+
+---
+# Target quantity
+
+Rather that the individual effect, another quantity of interest is the average treatment effect, the average difference of the potential outcomes over the **entire** population.
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/ATE.png" alt="A counterfactual world" width="40%" /&gt;
+&lt;p class="caption"&gt;A counterfactual world&lt;/p&gt;
+&lt;/div&gt;
+
+--
+
+`$$\tau = \mathbb{E}[Y(1) - Y(0)] = \mathbb{E}[Y(1)] - \mathbb{E}[Y(0)]$$`
+
+
+&gt; In general `\(\mathbb{E}[Y(1) - Y(0)]  \neq \mathbb{E}[Y | W=1] - \mathbb{E}[Y | W=0]\)`, except in RCT
+
+---
+# RCT: the ideal case
+
+Within the RCT, we have:
+`$$\mathbb{E}[Y(1) - Y(0)]  = \mathbb{E}[Y | W=1] - \mathbb{E}[Y | W=0]$$`
+
+`\(\Rightarrow\)` Although `\(\Delta_i\)` never observed, `\(\tau\)` is identifiable and  can be estimated 
+
+
+--
+&lt;img src="./img/dm.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+---
+# And for other data?
+
+Usually, `\(\mathbb{E}[Y(1) - Y(0)]  \neq \mathbb{E}[Y | W=1] - \mathbb{E}[Y | W=0]\)`. What can we do?
+
+&gt; 📚 Note that other type of data are called observational data, or real world data. In fact, these are the most common data.
+
+--
+
+Usually data are confounded, that is a third variable is related to both the exposure of interest `W` and the response `Y` 
+
+Examples:
+
+- being in a small class at kindergarten and being in REP's school, 
+- or if giving HCQ mostly to younger patient.
+
+--
+
+Ideally we would like to "gather" all these variables, match them, and emulate something that looks like a RCT, because a RCT is comfortable 😌.
+
+--
+
+Mathematically, we want a conditional independence
+
+`$$\left\{Y_{i}(0), Y_{i}(1)\right\} \perp  W_{i} \mid X_{i}$$`
+&gt; 🤓 This is called the unconfoundedness assumption, but don't worry if you do not precisely understand the mathematic notation.
+
+---
+# Example
+
+Note that this is why in RCT you will often find a so called **Table 1** to show that the covariate balancing is good, so that randomization is achieved.
+
+
+&lt;img src="./img/table1.png" width="100%" style="display: block; margin: auto;" /&gt;
+
+
+
+
+---
+# In practice
+
+There are several solutions, and will only consider two of them.
+
+&gt; 🤔 Before, have you any intuitive suggestion?
+
+--
+
+- The most intuitive one: **Matching**
+
+&gt; Pair each treated (resp. untreated) observations with one or more similar untreated (resp. treated) patient
+
+--
+
+- A less intuitive one, but easier in practice: **Weighting**, also called the inverse-propensity weighting (IPW)
+
+&gt; Weigthing groups so that control look like treated, meaning that they have the same distribution
+
+---
+# Matching (1)
+
+
+&lt;img src="./img/matching_1.jpg" width="80%" style="display: block; margin: auto;" /&gt;
+&lt;sub&gt;Examples from *Crash course of causal inference*, Coursera&lt;/sub&gt;
+---
+# Matching (2)
+
+
+&lt;img src="./img/matching_2.jpg" width="80%" style="display: block; margin: auto;" /&gt;
+&lt;sub&gt;Examples from *Crash course of causal inference*, Coursera&lt;/sub&gt;
+
+---
+# IPW
+
+
+&lt;img src="./img/intuition_IPW.jpg" width="80%" style="display: block; margin: auto;" /&gt;
+&lt;sub&gt;Examples from *Crash course of causal inference*, Coursera&lt;/sub&gt;
+
+---
+# Practical session on your data
+
+Remember, you are asked to think about the gender and salaries in your data.
+
+
+
+
+gender | Mean of ANNUAL column (in k) | 
+--------|:---------:
+Female | 48.7 |
+Male |55.17 | 
+
+
+
+```r
+t.test(salaries[salaries$SEX == "FEMALE", "ANNUAL"], salaries[salaries$SEX == "MALE", "ANNUAL"])
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  salaries[salaries$SEX == "FEMALE", "ANNUAL"] and salaries[salaries$SEX == "MALE", "ANNUAL"]
+## t = -43.229, df = 99436, p-value &lt; 2.2e-16
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  -6772.853 -6185.337
+## sample estimates:
+## mean of x mean of y 
+##  48695.36  55174.46
+```
+
+---
+# An example
+
+Let's take a subgroup with a majority of women, such that `JC.TITLE == FAMILY &amp; PROTECT SCVS SUPR II`
+
+
+
+gender | Mean of ANNUAL column (in k) | 
+--------|:---------:
+Female | 62.001 |
+Male |60.097 | 
+
+In this subgroup, the difference in means is 1904 (CI:617 3192) where women are more paid.
+
+--
+
+This is not a so easy problem 🤯
+
+What do you propose?
+
+---
+# Matching
+
+---
+# Measure ATE
+
+---
+
+
+
+
+```r
+# p_rf = cf$W.hat
+# 
+# hist(p_rf, main = "Histogram: Regression Forest Propensity Scores"
+#      , xlab = "Propensity Score", col = "cornflowerblue", las = 1)
+```
+
+
+```r
+# plot(smooth.spline(x = p_rf, y = salaries_encoded$SEX, df = 4)
+#      , xlab = "Propensity Score (Random Forest)", ylab = "Prob. Treated (W)"
+#      , col = adjustcolor("black", alpha.f=0.4), pch=19, las = 1)
+# abline(0, 1, lty="dashed")
+```
+
+
+```r
+# G &lt;- ((salaries_encoded$SEX - p_rf) * salaries_encoded$ANNUAL) / (p_rf * (1 - p_rf))
+# tau.hat &lt;- mean(G)
+# se.hat &lt;- sqrt(var(G) / (length(G) - 1))
+# result &lt;- c(ATE=tau.hat, lower_ci = tau.hat - 1.96 * se.hat, upper_ci = tau.hat + 1.96 * se.hat)
+# result
+```
+
+
+
+```r
+# model &lt;- lm(ANNUAL ~ . * SEX, data = salaries_encoded[, c("RACE", "EMPTYPE", "NAME", "ANNUAL", "SEX")])
+# tau.hat = as.numeric(coef(model)["SEX"])
+# se.hat = as.numeric(sqrt(vcovHC(model)["SEX", "SEX"]))
+# result_ols  &lt;- c(ATE=tau.hat, lower_ci = tau.hat - 1.96 * se.hat, upper_ci = tau.hat + 1.96 * se.hat)
+# result_ols
+```
+
+
+---
+
+# Credits
+
+A **huge** thanks to people sharing their supports, and more particularly to:
+
+- Julie Josse and Imke Mayer's slides
+
+- Florian Oswald's [slides](https://raw.githack.com/ScPoEcon/ScPoEconometrics-Slides/master/chapter_causality/chapter_causality.html#66)
+
+- Coursera, *Crash course of causal inference*
+
+
+And all the ressources mentioned on the first slide.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create();
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

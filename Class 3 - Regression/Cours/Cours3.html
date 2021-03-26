@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Class 3: linear model and logistic regression</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Bénédicte Colnet" />
+    <script src="Cours3_files/header-attrs-2.6/header-attrs.js"></script>
+    <link href="Cours3_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="Cours3_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="Cours3_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Class 3: linear model and logistic regression
+### Bénédicte Colnet
+### Lundi 8 Février 2021
+
+---
+
+# Today's program
+
+
+## Recap from past weeks
+
+- `R` to import data and perform exploratory data analysis.
+    - Summary statistics: *mean*, *median*, *variance*, *standard deviation*
+    - Data visualization with `ggplot2`
+    - Notions of correlation and causality
+
+- Principal Component Analysis and clustering 
+    - Theoretical principles
+    - Practice with `FactoMineR`
+
+--
+
+## Today
+
+Introduction to regression model: simple linear regression to Ordinary Least Squares estimation &amp; logistic regression
+  
+ The program will be first to introduce the theory and applications in class (~1h) 🎓 and then practice (~1h) 👷‍♀️.
+ 
+---
+# Why regression?
+
+&gt; Life is not always linear. So what is the interest of linear models in the area of fancier machine learning tools? 🤔
+
+--
+
+There are several reasons to this:
+
+--
+
+- Historically very used, in particular in the precomputer age of statistics;
+
+--
+
+- Provide interpretable solution and still a good approximation of reality in many cases;
+
+--
+
+- Can sometimes outperform fancier non linear models, for example with low number of training;
+
+--
+
+- Many non-linear technics are the generalization of linear methods.
+
+--
+
+In fact, you can transform your variables, for example using non linear transformation ( `\(X^3\)` ) or interactions between variables ( `\(X_1 . X_3\)` ) and then apply a linear model to these variables. This is still valid with what we will see in this class.
+
+⚠️ Transformation such that `\(\beta_i e^{3X_{i}}\)` are accepted one, but not `\(e^{\beta_i X_{i}}\)`. **The model has to be linear in the parameters `\(\beta_i\)`.**
+
+---
+# Example (1)
+
+Remember the data set of the first class.
+
+
+|         | maxO3|   T9|  T12|  T15| Ne9| Ne12| Ne15|     Vx9|    Vx12|    Vx15|
+|:--------|-----:|----:|----:|----:|---:|----:|----:|-------:|-------:|-------:|
+|20010601 |    87| 15.6| 18.5| 18.4|   4|    4|    8|  0.6946| -1.7101| -0.6946|
+|20010602 |    82| 17.0| 18.4| 17.7|   5|    5|    7| -4.3301| -4.0000| -3.0000|
+|20010603 |    92| 15.3| 17.6| 19.5|   2|    5|    4|  2.9544|  1.8794|  0.5209|
+|20010604 |   114| 16.2| 19.7| 22.5|   1|    1|    0|  0.9848|  0.3473| -0.1736|
+|20010605 |    94| 17.4| 20.5| 20.4|   8|    8|    7| -0.5000| -2.9544| -4.3301|
+|20010606 |    80| 17.7| 19.8| 18.3|   6|    6|    7| -5.6382| -5.0000| -6.0000|
+
+These data are real meteorological data taken at Rennes in 2001 in order to predict the maximum of ozone concentration in a day.
+---
+# Example (2)
+
+Linearity in some natural phenomenon seems to be a good hypothesis!
+
+![](Cours3_files/figure-html/unnamed-chunk-2-1.png)&lt;!-- --&gt;
+
+
+---
+# Simple regression
+
+**General goal** 
+
+Explain a *continuous* variable `\(Y\)` as a function of another variable `\(X\)`.
+
+--
+
+💡 *Note that this is a general goal that goes beyond the regression class*
+
+--
+
+**Linear regression** 
+
+Suppose that `\(Y\)` and `\(X\)` have the following relationship
+
+`$$Y=\beta_{0}+\beta_{1} X+\varepsilon$$`
+
+with `\(\varepsilon\)` a noise ( `\(\mathbb{E}[\varepsilon] = 0\)` and `\(\mathbb{V}[\varepsilon] = \sigma^2\)`)), and `\(\beta_0\)` and `\(\beta_1\)` unknown parameters.
+
+--
+
+⬆️ `\(\varepsilon\)` corresponds measure errors or forgotten predictors.
+
+--
+
+**Your goal** 
+
+Once we admit the previous hypothesis, find estimation of the parameters `\(\beta_0\)` and `\(\beta_1\)` from a sample of data `\((x_1, y_1), (x_2, y_2), \dots , (x_n, y_n)\)`. The estimations you find are denoted `\(\hat \beta_0\)` and `\(\hat \beta_1\)`.
+
+---
+# Which line to choose?
+
+Suppose we have some data, an average score in function of the class size.
+We want to rely these two data with a regression line.
+--
+
+
+
+
+.left-wide[
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-4-1.png" style="display: block; margin: auto;" /&gt;
+]
+
+.right-thin[
+A *line*! Great. But **which** line? This flat one?
+]
+
+---
+# A another that looks better
+
+Or this one? It seems better.
+
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" /&gt;
+
+
+--
+
+We need a rule to decide! Any idea?
+
+
+---
+# Proceadure to find `\(\hat \beta_0\)` and `\(\hat \beta_1\)`
+
+
+With your hypothesis on the data relationship and your sample of data, you can write `\(n\)` equations:
+
+--
+
+`$$y_i =  \beta_0 + \beta_1 x_i + \varepsilon_i$$`
+
+--
+
+The goal is to find `\(\hat \beta_0\)` and `\(\hat \beta_1\)` such that:
+
+$$\hat y_i =  \hat \beta_0 + \hat \beta_1 x_i \sim y_i $$
+Meaning that our prediction `\(\hat y_i\)` is close to the true value `\(y_i\)`.
+
+(💡 *Note the hat on notation. It means that `\(\hat y_i\)`  is our prediction for `\(y_i\)`*)
+
+--
+
+Then you need to define what "close to" means. What would you suggest?
+
+--
+
+Usually the square difference is the most used. Meaning that we consider `\(\hat y_i\)` close to `\(y_i\)` if `\((\hat y_i - y_i)^2\)` is small.
+
+---
+# Graphical vizualization
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-6-1.png" style="display: block; margin: auto;" /&gt;
+
+
+--
+
+&gt; Bonus question: could we have chosen something else than the minimization of the squares? 🕵
+
+
+---
+
+# Back to the proceadure
+
+With a mathematical notation it means that `\(\hat \beta_{0}\)` and `\(\hat \beta_{1}\)` are solutions of:
+
+`$$\min _{\beta_{0}, \beta_{1}} \sum_{i=1}^{n}\left(y_{i}-\beta_{0}-\beta_{1} x_{i}\right)^{2}$$`
+-- 
+
+Once you minimized this quantity, you still have a gap in between the prediction and the true labels. To investigate this you can look at what is called the residuals:
+
+`$$\hat{\varepsilon}_{i}=y_{i}-\hat{y}_{i}$$`
+--
+
+Having solved this quantity allows to do **predictions**, so that for any new `\(x_j\)` for which you don't know the `\(y_j\)`:
+`$$\hat{y}_{j}=\hat{\beta}_{0}+\hat{\beta}_{1} x_{j}$$`
+---
+# A note on `\(R^2\)`
+
+In linear regression we usually see a `\(R^2\)` reported. What does it mean?
+
+
+--
+
+`$$\mathrm{R}^{2}=\frac{\|\hat{Y} - \bar{Y}\|^{2}}{\|Y - \bar{Y}\|^{2}}=\cos ^{2} \theta_{0}$$`
+
+with `\(\hat{Y}\)` the prediction, and `\(Y\)` the *truth*. 
+*"Which part of the `\(Y\)` can be explained with the linear model?"*
+
+--
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/R2.png" alt="Matzner, Régression avec R" width="50%" /&gt;
+&lt;p class="caption"&gt;Matzner, Régression avec R&lt;/p&gt;
+&lt;/div&gt;
+
+--
+
+Be careful: the more you add variables to your model, the more the `\(\mathrm{R}^{2}\)` will be small. Therefore it is a not a good quantity to compare regressions with a different number of variables.
+
+---
+# Back to ozone data set
+
+Remember in class 1 we worked in a data set called `ozone`, and will focus on `maxO3` (concentration en ozone (en `\(\mu g / m^3\)`) ) and `T12` the temperature at 12pm. 
+
+--
+
+We recall how to plot data using `ggplot`:
+
+
+```r
+ozone &lt;- read.table("./ozone.txt", header=TRUE)
+ggplot(ozone, aes(x = T12, y = maxO3)) +
+  geom_point() +
+  theme_bw() 
+```
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-8-1.png" style="display: block; margin: auto;" /&gt;
+
+Does the linear assumption seems to be a good one?
+---
+# Estimate `\(\hat \beta_0\)` and `\(\hat \beta_1\)` 
+
+In `R` the common function to perform a simple linear model is `lm()`.
+
+
+```r
+reg.result &lt;- lm(maxO3~T12, data = ozone)
+reg.result
+```
+
+```
+## 
+## Call:
+## lm(formula = maxO3 ~ T12, data = ozone)
+## 
+## Coefficients:
+## (Intercept)          T12  
+##     -27.420        5.469
+```
+--
+
+**Typical questions you should answer:**
+
+- Where can we read `\(\hat \beta_0\)` and `\(\hat \beta_1\)`?
+
+- Is this result statistically significant?
+
+- What is the `\(R^2\)`? What is the signification of this quantity?
+
+--
+
+**Tips:** You can simply take the coefficients by doing: `reg.result$coef`
+
+
+---
+# Look at the results in detail 
+
+
+```r
+summary(reg.result)
+```
+
+```
+## 
+## Call:
+## lm(formula = maxO3 ~ T12, data = ozone)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -38.079 -12.735   0.257  11.003  44.671 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) -27.4196     9.0335  -3.035    0.003 ** 
+## T12           5.4687     0.4125  13.258   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 17.57 on 110 degrees of freedom
+## Multiple R-squared:  0.6151,	Adjusted R-squared:  0.6116 
+## F-statistic: 175.8 on 1 and 110 DF,  p-value: &lt; 2.2e-16
+```
+
+
+---
+# Vizualisation of the result
+
+
+```r
+ggplot(ozone, aes(x = T12, y = maxO3)) +
+  geom_point() + 
+  geom_abline(intercept = reg.result$coefficients[[1]], slope = reg.result$coefficients[[2]], color="red", linetype="dashed", size=1) +
+  theme_bw()
+```
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-11-1.png" style="display: block; margin: auto;" /&gt;
+
+Tips: 
+- You can have further details on the regression doing `plot(reg.result)`.
+- You can produce the same plot using `geom_smooth` and the `method = "lm"`.
+directly in `ggplot()`
+
+---
+# Prediction
+
+Imagine you have a new value for `T12`, could you predict a value for `maxO3`?
+
+--
+
+
+
+```r
+xnew &lt;- 19
+xnew &lt;- as.data.frame(xnew)
+colnames(xnew) &lt;- "T12"
+predict(reg.result, xnew, interval="pred") # xnew has to be a dataframe with same variable, here "T12"
+```
+
+```
+##        fit     lwr      upr
+## 1 76.48538 41.4547 111.5161
+```
+
+
+Don't forget to produce the associate confidence interval!
+
+---
+# Multiple regression
+
+
+**General goal** 
+
+Explain a *continuous* variable `\(Y\)` as a function of other variables `\(X_1\)`, `\(X_2\)`, `\(X_3\)`, ..., `\(X_p\)`.
+
+--
+
+💡 *This is a generalization of our previous problem.*
+
+--
+
+**Multiple linear regression** 
+
+This time we suppose the following relationship for the observed data:
+
+`$$y_{i}=\beta_{0}+\beta_{1} x_{i 1}+\beta_{2} x_{i 2}+\cdots+\beta_{p} x_{i p}+\varepsilon_{i}, \quad i=1, \cdots, n$$`
+
+with `\(\varepsilon\)` a noise, `\(\mathbb{E}[\varepsilon]=0\)` and `\(\mathbb{V}[\varepsilon] = \sigma^2\)`, and `\(\beta_0\)`, ...,  `\(\beta_p\)` unknown parameters.
+
+
+
+
+---
+# Equivalence with matrix
+
+Instead of `\(n\)` equations, you can write everything in a matrix with `\(n\)` rows, and `\(p\)` column:
+
+
+`$$Y_{n \times 1}=X_{n \times(p+1)} \beta_{(p+1) \times 1}+\varepsilon_{n \times 1}$$`
+
+
+with `\(\mathbb{E}(\varepsilon_{n \times 1})=0, \quad \mathbb{V}(\varepsilon_{n \times 1})=\sigma^{2} I\)`
+
+💡 *Matrix size are indicated. Make sure you can understand this as equivalent with the previous formulation.*
+
+--
+
+
+`\(\left[\begin{array}{c}Y_{1} \\ \vdots \\ Y_{i} \\ \vdots \\ Y_{n}\end{array}\right]=\left[\begin{array}{cccccc}1 &amp; x_{11} &amp; \cdots &amp; x_{1 j} &amp; \cdots &amp; x_{1 p} \\ \vdots &amp; \vdots &amp; &amp; \vdots &amp; &amp; \vdots \\ 1 &amp; x_{i 1} &amp; &amp; x_{i j} &amp; &amp; x_{i p} \\ \vdots &amp; \vdots &amp; &amp; \vdots &amp; &amp; \vdots \\ 1 &amp; x_{n 1} &amp; \cdots &amp; x_{n j} &amp; \cdots &amp; x_{n p}\end{array}\right]\left[\begin{array}{c}\beta_{0} \\ \beta_{1} \\ \vdots \\ \beta_{j} \\ \vdots \\ \beta_{n}\end{array}\right]+\left[\begin{array}{c}\varepsilon_{1} \\ \vdots \\ \varepsilon_{i} \\ \vdots \\ \varepsilon_{n}\end{array}\right]\)`
+
+---
+# Estimation
+
+Solve this: 
+
+`$$\hat{\beta}=\underset{\beta_{0}, \cdots, \beta_{p}}{\operatorname{argmin}} \sum_{i=1}^{n}\left(y_{i}-\beta_{0}-\sum_{j=1}^{p} \beta_{j} x_{i j}\right)^{2}$$`
+💡 *I assure you it is the same problem as before, minimizing a sum of `\(n\)` squared components. The `\(\beta_1\)` is now composed of several terms.*
+
+--
+
+Once you have found parameters `\(\hat \beta_0\)`, ...,  `\(\hat \beta_p\)`, you can predict `\(\hat y\)` from any new `\(x_{\text{new}}\)`:
+
+`$$\hat{y}=\hat{\beta}_{0}+\hat{\beta}_{1} x_{\text{new}, 1}+\cdots+\hat{\beta}_{p} x_{\text{new}, p}$$`
+
+--
+
+The residuals (difference between *true* values and predictions) are the same as before:
+
+`$$\hat{\varepsilon}_{i}=y_{i}-\hat{y}_{i}$$`
+
+---
+# A little more challenging slide
+
+When minimizing the least squares to find `\(\hat \beta\)`, the idea is to compute the derivative of the sum of squares with respect to `\(\beta\)`.
+
+`$$0=\frac{\partial\|Y-X \beta\|^{2}}{\partial \beta}=\frac{\partial(Y-X \beta)^{\prime}(Y-X \beta)}{\partial \beta}$$`
+At the end (using derivative formula for matrix):
+
+`$$\hat{\beta}=\left(X^{\prime} X\right)^{-1} X^{\prime} Y$$` if `\(X^{\prime} X\)` is inversible.
+
+
+**Properties of `\(\hat \beta\)`**
+
+`\(\mathbb{E}(\hat{\beta})=\beta ; \mathbb{V}(\hat{\beta})=\left(X^{\prime} X\right)^{-1} \sigma^{2} ; \mathbb{V}\left(\hat{\beta}_{j}\right)=\left[\left(X^{\prime} X\right)^{-1}\right]_{j j} \sigma^{2}\)`
+
+--
+
+Don't worry if you don't understand everything. Focus on properties: unbiased estimator (good!)
+
+---
+# Visualization
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/RSS3d.png" alt="Credits: The Elem. of Stat. Learning. p.45" width="50%" /&gt;
+&lt;p class="caption"&gt;Credits: The Elem. of Stat. Learning. p.45&lt;/p&gt;
+&lt;/div&gt;
+
+A 3D visualization is still possible, it is exactly the same problem as before.
+
+---
+# Explain maxO3 with other variables?
+
+Here we propose to explain `maxO3` with quantitative variables.
+
+
+```r
+ozone.m &lt;- ozone[,1:11] # subset of quantitative variables
+reg.multiple &lt;- lm(maxO3~., data = ozone.m) # multiple regression
+reg.multiple
+```
+
+```
+## 
+## Call:
+## lm(formula = maxO3 ~ ., data = ozone.m)
+## 
+## Coefficients:
+## (Intercept)           T9          T12          T15          Ne9         Ne12  
+##    12.24442     -0.01901      2.22115      0.55853     -2.18909     -0.42102  
+##        Ne15          Vx9         Vx12         Vx15       maxO3v  
+##     0.18373      0.94791      0.03120      0.41859      0.35198
+```
+
+---
+# Summary
+
+How to read the summary?
+```
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 12.24442   13.47190   0.909   0.3656    
+T9          -0.01901    1.12515  -0.017   0.9866    
+T12          2.22115    1.43294   1.550   0.1243    
+T15          0.55853    1.14464   0.488   0.6266    
+Ne9         -2.18909    0.93824  -2.333   0.0216 *  
+[...]   
+maxO3v       0.35198    0.06289   5.597 1.88e-07 ***
+
+
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 14.36 on 101 degrees of freedom
+Multiple R-squared:  0.7638,	Adjusted R-squared:  0.7405 
+F-statistic: 32.67 on 10 and 101 DF,  p-value: &lt; 2.2e-16
+```
+
+---
+# Subset selection
+
+Two reasons for which you may not be satisfied with the current least squares regression:
+
+- *Prediction accuracy* with low bias but high variance as the number of variables increases
+
+- *Poor interpretation* if too many variables.
+
+--
+
+An illustration with a data set on prostate cancer:
+
+&lt;div class="figure" style="text-align: center"&gt;
+&lt;img src="./img/model_selection.png" alt="Credits: The Elem. of Stat. Learning. p.58" width="50%" /&gt;
+&lt;p class="caption"&gt;Credits: The Elem. of Stat. Learning. p.58&lt;/p&gt;
+&lt;/div&gt;
+
+---
+# Methods to select a subset of variables
+
+But with many variables it can be complicated to test all the combinations (typically above `\(&gt; 40\)`).
+
+--
+
+- Forward-stepwise selection:
+
+Start with one variable and add variables one by one.
+
+- Backward-stepwise selection
+
+Reverse approach starting with all the variables and getting rid of the ones that explain the less.
+
+And others modulations of these two.
+
+--
+
+&gt;You can also find continuous methods that act on the `\(\beta\)` rather than proceeding with selecting variables. For that you introduce a penalty on the optimization step to shrink high values for `\(\beta\)`. The higher the penalty, the lower the coefficients (as if you drop variables). These methods belongs to the Lasso or Ridge methods.
+
+---
+# How to proceed in practice?
+
+For sure: not manually! 
+--
+You have to automatize this step and find a criteria. We propose to use the `regsubsets` function.
+
+
+```r
+library(leaps)
+choice &lt;- regsubsets(maxO3~.,data=ozone.m,nbest=1,nvmax=11)
+plot(choice, scale="bic")
+```
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-16-1.png" style="display: block; margin: auto;" /&gt;
+
+You can launch the final regression with `reg.final &lt;- lm(maxO3~T12+Ne9+Vx9+maxO3v, data= ozone.m)`.
+
+--
+You can also use `RegBest` in `FactoMineR` to select the model that uses `\(R^2\)` on groups with same number of variables.
+
+---
+# Qualitative or categorical variable
+
+Remember that in the first session we have seen different two different data types: qualitative and quantitative. For example a person has `brown` or `blue` eyes, or the school is in the `center` of the city or in the `suburb`.
+
+--
+For example we can consider this simple toy data set:
+
+
+
+```r
+df1 = data.frame(income=c(3000, 5000, 7500, 3500),
+             sex=c("male","female","male","female"))
+```
+
+Usually the trick is to transform this in a dummy variable ( `\(1\)` or `\(0\)` ). 
+⚠️ `R` does this automatically, you don't have to do it manually.
+
+
+
+
+
+```r
+lm1 = lm(income ~ sex, df1)
+lm1
+```
+
+```
+## 
+## Call:
+## lm(formula = income ~ sex, data = df1)
+## 
+## Coefficients:
+## (Intercept)          sex  
+##        5250        -1000
+```
+
+---
+# Interpretation
+
+The intercept `\(\beta_1\)` measures the difference in intercept from being a female.
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-20-1.png" style="display: block; margin: auto;" /&gt;
+--
+Remember that using `lm()` with a qualitative variable is like doing a ANOVA or ANCOVA. See "Régression with R" to learn more.
+
+
+Crédits to Prof. Florian Oswald for this schematic.
+
+---
+# And if `\(Y\)` is not continuous?
+
+For example with a binary `\(Y\)`?
+
+--
+
+We take here the example of age and the presence or the absence of Coronary Heart Disease (CHD).
+
+
+```
+##   ID AGRP AGE CHD
+## 1  1    1  20   0
+## 2  2    1  23   0
+## 3  3    1  24   0
+## 4  4    1  25   0
+## 5  5    1  25   1
+## 6  6    1  26   0
+```
+
+**Goal** Predict CHD from the age.
+
+--
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-22-1.png" style="display: block; margin: auto;" /&gt;
+
+First attempt: a linear model. Does it seem to be a good idea?
+
+---
+# Binned data
+
+We can estimate proportion of CHD in each age categories.
+
+
+|AGE_binned  | nb_CHD| total| prop|
+|:-----------|------:|-----:|----:|
+|[20,29.9]   |      1|    10|   10|
+|(29.9,33.8] |      1|    10|   10|
+|(33.8,36.7] |      2|    10|   20|
+|(36.7,41]   |      3|    11|   27|
+|(41,44]     |      4|    11|   36|
+|(44,48]     |      5|    10|   50|
+|(48,52.3]   |      3|     8|   38|
+|(52.3,57]   |     12|    15|   80|
+|(57,59.1]   |      4|     5|   80|
+|(59.1,69]   |      8|    10|   80|
+
+---
+# Visualization
+
+&lt;img src="Cours3_files/figure-html/unnamed-chunk-24-1.png" style="display: block; margin: auto;" /&gt;
+---
+# Toward the formula
+
+Mathematically it writes:
+
+`$$\mathbb{P}({\text{CHD}=1|\text{AGE}}) =
+\frac{e^{\text{(intercept)} + \beta \text{AGE}}}{1 + e^{\text{(intercept)} + \beta \text{AGE}}}$$`
+
+Or equivalently:
+
+`$$\log \Bigg( \frac{\mathbb{P}({\text{CHD}=1|\text{AGE})}}{\mathbb{P}({\text{CHD}=0|\text{AGE}})} \Bigg)   = \underbrace{\text{(intercept)} + \beta \times  \text{AGE}}_{Linear}$$`
+
+--
+How to run in `R` ?
+
+```r
+model &lt;- glm(CHD ~ AGE, family = binomial(link="logit"), data = CHD)
+model$coefficients
+```
+
+```
+## (Intercept)         AGE 
+##  -5.3094534   0.1109211
+```
+--
+`$$\log \left(\frac{\mathbb{P}(\mathrm{CHD}=1 \mid \mathrm{AGE})}{\mathbb{P}(\mathrm{CHD}=0 \mid \mathrm{AGE})}\right)=-5.31+0.11 \times \mathrm{AGE}$$`
+---
+# Logistic regression: summary
+
+**Data**
+
+`\(n\)` observations `\((x_i, y_i)\)` where `\(x_{i} \in \mathbb{R}^{p}\)` and `\(y_{i} \in\{0,1\}\)`.
+
+--
+
+**Logistic regression**
+
+`$$\log \left(\frac{\mathbb{P}(Y=1 \mid X_1, \dots X_p)}{\mathbb{P}(Y=0 \mid  X_1, \dots X_p)}\right)=\beta_0+\beta_1 X_1 + \dots + \beta_p X_p$$`
+--
+
+**General remarks**
+
+- You can have a multiclass problem (meaning `\(Y\)` can be qualitative with several labels).
+
+- The `glm` function contains everything you should need.
+
+---
+# General conclusion
+
+
+All these models are used a lot!
+
+- `ozone` data is a real data used in meteorology set that is mostly analyzed with linear regression. `AirParis` and `airBreizh` (and probably others) are based on linear models;
+
+- In general econometrics uses a lot linear regression;
+
+- The medical domain highly uses logistic regression, such as the medical domain, but also for spam or fraud detection in companies.
+
+
+For the lab we will work with stock values and predict if the market is going up or down.
+ 
+---
+# Credits for this class
+
+🙇 
+
+To professors and people sharing their class. Most of the content here comes from:
+
+- François Husson's book *R pour la statistique et la science des données* (in particular the `ozone` data analysis);
+
+- Florian Oswald for his econometrics class at SciencePo `ScPoEconometrics`.
+
+- Imke Mayer and Erwan Scornet for sharing to me their slides and lab;
+
+- Trevor Hastie and Robert Tishirani's book (*The Elements of Statistical Learning*) and youtube series.
+
+--
+
+If you want to dig into the theory you can read the book *Régression avec R* from Eric Matzner-Lober and Pierre-André Cornillon. 
+
+You can also watch the Youtube series of Trevor Hastie and Robert Tishirani.
+
+
+
+
+ 
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create();
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

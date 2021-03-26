@@ -1,0 +1,577 @@
+---
+title: "Data challenge & SHS: Principal component analysis and clustering in R"
+author:
+  - Julie Josse, Gaël Varoquaux, and Bénédicte Colnet
+date: "February 2021"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document:
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+keywords: PCA; clustering
+abstract: |
+  This is the practical class associated with the class 2 on principal component analysis and clustering. In this tutorial, you will learn how to perform a principal component analysis and how to interpret it. You will also learn how to perform a clustering on quantitative data. This notebook makes an intensive use of the package \texttt{FactoMineR}. Interpretation of the results remains the most important part of this tutorial.
+---
+
+
+Aknowledgments: François Husson class on youtube, the book "R pour la statistique et la science des données".
+  
+```{r eval = TRUE}
+# Load all packages needed to execute the job
+# If the packages are not installed, write
+# install.packages("<name of package>")
+
+library(ggplot2) # plot
+
+# Clear any existing variables
+rm(list = ls())
+
+# Set seed for reproducibility
+set.seed(123)
+```
+
+
+# Principal component analysis
+
+
+## Illustrative example
+
+Before going into details, let us look at a funny example. Imagine that I generate two variables $X_1$ and $X_2$ from normal distributions. We want these variables to be linked (correlated) and such that $X_j \sim \mathcal{N}(0,1)$. The following chunk performs the simulation. You can take the output data frame and explore the data first with univariate analysis. And then with a bivariate plot. 
+
+Remark: An outlier is in the dataset. Can you recover it?
+
+
+```{r}
+library(MASS) # for simulations
+Sigma <- matrix(c(1,0.8,1,0.8),2,2)
+simulated_data <- mvrnorm(n = 500, mu = c(0,0), Sigma)
+output <- data.frame(simulated_data)
+names(output) <- c("X1", "X2")
+output[501,] <- c("X1" = 2, "X2" = -2) # outlier step
+```
+
+*Solution*
+
+```{r}
+library(ggplot2)
+ggplot(output, aes(y = X1)) +
+  geom_boxplot() +
+  theme_classic()
+
+ggplot(output, aes(y = X2)) +
+  geom_boxplot() +
+  theme_classic()
+
+ggplot(output, aes(x = X1)) +
+  geom_histogram(bins = 20, fill = "blue", alpha = 0.6, color = "grey") +
+  theme_classic()
+
+
+ggplot(output, aes(x = X2)) +
+  geom_histogram(bins = 20, fill = "blue", alpha = 0.6, color = "grey") +
+  theme_classic()
+```
+
+
+```{r}
+ggplot(output, aes(x = X1, y = X2)) +
+  geom_point() +
+  theme_classic()
+```
+
+The outlier is clearly identifiable on this scatter plot, but not using only the boxplot or any univariate tool. This is to highlight that PCA will allow us to see high dimensional outliers. In other words, PCA will allow you to observe multidimensional outliers.
+
+*End of solution*
+
+
+## General introduction
+*Context* 
+
+Principal Component Analysis (usually the shortname is PCA but you can also find ACP in French) focuses on typical data you can find in several domains: *observations* (or individus) in rows, and *variables* in column. Note that the PCA focuses on *quantitative* variables (for example age, or price, but not color or sex). For example we can study the average temperature depending on cities. In that case cities are rows, and in column the average temperature per month. 
+
+*Typical question an ACP answers*
+
+A typical question you may ask on your data is: how much the different observations are close to one another considering the variables? (remember that everything you will conclude depends on these variables that you added in your initial model) You can also see PCA as a way to find a low-dimensional representation that captures the "essence" of high-dimensional data
+
+
+*What can you interpret from data?*
+
+The PCA will group similar individuals together. Information are also learned on variables, with the correlated variables (meaning that you have a linear link between two variables), and also which variables synthetize the most the observations, or which variables bring different informations.
+
+*Package*
+
+In this notebook we propose to use the package \texttt{FactoMineR} and the function \texttt{PCA}. 
+
+## An example: the decathlon data set
+
+The data set is based on the decathlon results during the Athene's olympic games and the Décastar (another competition). For each athletes the data set contains the results in the 10 tests, with the total number of points and ranking. The competition in which the athlete participated is also mentioned.
+
+For both competitions, the following information is available for each athlete: performance for each of the 10 events, total number of points (for each event, an athlete earns points based on performance; here the sum of points scored), and final ranking. The events take place in the following order: 100 meters, long jump, shot put, high jump, 400 meters (first day) and 110 meter hurdles, discus, pole vault, javelin, 1500 meters (second
+day).
+
+The overall objective of this exercice is to characterize the athletes and their differences, and to observe it tests evaluate similar skills or different ones. The aim of conducting PCA on this dataset is to determine profiles for similar performances: are there any athletes who are better at endurance events or those requiring short bursts of energy, etc? And are some of the events similar? If an athlete performs well in one event, will he necessarily perform well in another?
+
+
+
+### Question 1
+
+First, load the data and inspect the data (for example which variables are quantitative or qualitative?). 
+
+Remark: This step is the first step you should do before any data analysis, and not only PCA.
+
+**Solution question 1**
+```{r, message=FALSE, include=TRUE}
+# Load data
+decathlon <- read.csv(file = "decathlon.csv", row.names = 1)
+dim(decathlon)
+summary(decathlon)
+```
+
+*All the variables are quantitative except the competition type. Not that if you don't add the item \texttt{row.names=1}, then you will have an additional variable being the name of the participant. It is not a problem, but don't forget to remove it when doing the PCA or else. Probably the simplest solution is to have it as row names. The commant \texttt{dim} also inform us on the number or observations. here we have 41 different observations.*
+
+**End of solution question 1**
+
+### Question 2
+
+
+Apply a PCA on the data using the function from FactoMineR, and interpret it. 
+
+Tips:
+- First install the package.
+
+- The appropriate function is called PCA. 
+
+- You can check if this function does or not the normalization step going in the documentation (\texttt{?PCA}). 
+
+- Why are normalization and reduction an important step? 
+
+- Explain your choices for the active and illustrative variables/individuals? (because you don't have to use all the variables to perform the PCA, you can only run it on a subset of variables that makes more sens.)
+
+- When you interpret the data, you can also do a bar plot of the eigenvectors found by the PCA. For this purpose you can use the result object of the PCA analysis, and look at the \texttt{eig} component of this object. You can plot this using the \texttt{barplot} function or ggplot2 (which is a little bit more challenging, but a good exercice)
+
+
+**Solution question 2**
+
+*First, check that the package is installed and don't forget to call the library. Usually in a notebook all the librairy calls are at the beginning of the notebook for more clarity. Also, it can be useful to recall why you call a library, so that you do not end up with a long list of packages where you don't remember the purpose.*
+```{r}
+# Install the package
+#install.packages("FactoMineR", dependencies = TRUE)
+
+library(FactoMineR) # package for PCA
+```
+
+
+```{r}
+?PCA
+```
+
+
+**Discussion on normalization**
+
+*The normalization is an important step as it allows to compare all the variables with the same importance. For example imagine we have a data set with two variables A and B. The variable A is in kg and the other B in g, then the variable in g will count more in the distance. We recall that the distance between two observations is given with * $d = (a_i-a_j)^2 - (b_i-b_j)^2$
+
+*Therefore if an identical difference in weights will be counted differently 0.2kg squarred or 200 squarred. Because in this data set the data have different unis we have no choice but to center the data and normalize it. Note that this is automatically done with the \texttt{scale.unit = TRUE} command.*
+
+*In our specific example when the data is standardized, it is possible to compare two variables with different units and to say sentences such as “Paul is more remarkable by his performance on 100m than John is by is X400m”. With a value above 2, it means that the performance is way beyond average for example.*
+
+**Which variables matter?**
+
+*Only the result at each test matters. In fact, to obtain a typology of the athletes based on their performances for the 10 decathlon events, such as "two athletes are close since they have similar performance profiles", the distances between two athletes are defined on the basis of their performances in the 10 events. Thus, only the performance variables are considered active; the other variables (number of points, rank, and competition) are supplementary. Here, the athletes are all considered as active individuals.* 
+
+```{r}
+library(FactoMineR)
+res.PCA <- PCA(decathlon, quanti.sup = c(11, 12), quali.sup = 13)
+```
+
+
+```{r, fig.height = 3.5, fig.width = 3.5}
+res.PCA <- PCA(decathlon, # data used
+               scale.unit = TRUE, # scale the data, true by default
+               graph = TRUE, # plot the graph, true by default
+               quanti.sup = c(11:12), # additional quantitative variables
+               quali.sup = 13) #additional qualitative variables
+```
+
+*Outputs can bw summarized with the function summary, and for example with the first 2 dimensions*
+
+```{r}
+summary(res.PCA)
+```
+
+*We can observe the eigenvalues of the result are in the first column of the result obtained from PCA, and we observe that the percentage is the second variable. We plot this using ggplot2*
+
+```{r}
+res.PCA$eig
+```
+
+
+
+```{r}
+library(tibble) # Allows to have small data frame
+plot_percentage <- tibble("comp" = as.factor(seq(1:length(res.PCA$eig[,2]))),
+               "percentage" = res.PCA$eig[,2])
+
+ggplot(plot_percentage, aes(x = comp, y = percentage)) +
+  geom_bar(stat="identity", fill = "darkblue", alpha = 0.7) + 
+  xlab("Component number") + # don't forget to explicit your axis
+  ylab("Percentage of the variance explained") +
+  theme_bw()
+```
+
+
+*Note that you can go faster without ggplot, the drawback is that you have less liberty for further analysis or for customizing your plot*
+
+```{r}
+barplot(res.PCA$eig[,2])
+```
+
+
+Note that you may want to plot your graph in a different way. For example with smaller font, and without the qualitative variables, and another title.
+
+```{r}
+plot(res.PCA, cex=0.8, invisible = "quali", title = "My other title")
+```
+
+You can also put no label, put the color of a qualitative variable (here you have to call it habillage). Note that you can also write something like: `plot(res, cex=0.8, habillage=13)`.
+
+```{r}
+plot(res.PCA, cex=0.8, invisible="quali", label = "none", title="My other title", habillage="Competition")
+```
+
+You can also represent your individue on other axes:
+
+```{r}
+plot(res.PCA, choix="ind", cex=0.8, habillage=13, title="My title", axes=3:4)
+```
+
+And you can also select individuals.
+
+`select="cos2 0.7"` : select the individuals that have a quality of representation on the map greater than 0.7
+`select="cos2 5"` : select the 5 individuals that have the best quality of representation on the map
+`select="contrib 5"` : select the 5 individuals that contribute the most to the construction of the map
+`select=c("nom1","nom2")` : select the individuals by their name
+
+
+```{r}
+plot(res.PCA, cex=0.8, habillage=13, select="cos2 0.7")
+```
+
+```{r}
+plot(res.PCA, choix="var", select="contrib 5")
+```
+
+
+**End of solution question 2**
+
+
+### Question 3
+3. What can you say on the variables related to speed (100m and 400m) versus the long jump?
+
+Tips:
+
+- You can first give a general comment looking at the correlation circle
+
+- You can also access to the details of this graph looking at what hides in the variable results \texttt{res.PCA$var$else}.
+
+**Solution question 3**
+
+*Variables related to speed are negatively correlated with the first principal component, while the variables shot put and long jump are positively correlated with this component.*
+
+*You can be surprised to see that long jump is negatively correlated with X100m. Does this mean that people that are fast on the 100m are bad at jumping? This is the reverse! A small value for running (X.100m for example) corresponds to a high score!*
+
+*We can also observe that the variables High.jump. Shot.put and Discus are not well correlated with the variables related to speed and long jump. Apparently strength and speed are two different things.*
+
+```{r}
+res.PCA$var$coord[,1:2] # first two dimension, with the precise coordinate
+```
+
+
+```{r}
+res.PCA$var$cos2[,1:2] # gives the representation quality of the coordinate
+```
+
+
+```{r}
+res.PCA$var$contrib[,1:2] # gives the contribution to the construction of the components
+```
+
+
+**End of solution question 3**
+
+
+
+### Question 4
+4. What can you say on Carsara athlete, Sebrle and Clay, and also Schoenbeck and Barras?
+
+**Solution question 4**
+
+
+*First, Carsara. Casarsa is located on the top left corner. The first dimension is highly correlated with the number of points: this indicates that he does not have a large number of points. The second dimension is correlated with the Shot.put, High.jump and Discus. This indicates that Casarsa had good results in these three sports. Remember that the second dimension is calculated orthogonally to the first. So Casarsa has good results in these three sports compared to other “bad” athletes.*
+
+
+*Sebrle and Clay are close to one another and both far from the center of gravity of the cloud of points. The quality of their projection is therefore good, and we can be certain that they are indeed close in the original space. This means that they have similar profiles in their results across all sports events.*
+
+*Schoenbeck and Barras are close to one another but they are also close to the center of gravity of the cloud of points. When looking at their cos2 they are not well projected, We cannot interpret their distance based on this plot only.*
+
+```{r}
+res.PCA$ind$cos2[c("SEBRLE", "CLAY", "Schoenbeck", "Barras"),1:2]
+```
+
+**End of solution question 4**
+
+
+
+### Question 5
+5. Which variable predict the best the final score?
+
+**Solution question 5**
+*The supplementary variable “number of points” is almost collinear to the first principal component. Therefore, the athletes with a high number of points are particularly good in the trials correlated with the first principal component. The most correlated variables with this component are 100m, X110m.hurdle and long jump. You can see this on the correlation circle, but you can also look at the contributions.*
+
+```{r}
+res.PCA$var$contrib[,1:2]
+```
+
+*Don't forget that the quantity in X100m is in second, so the higher the value, the lower the performance. Therefore it is "normal" to see a negative correlation.*
+
+*A general conclusion you can make is the fact that these three sports govern the decathlon final score.*
+
+
+**End of solution question 5**
+
+
+### Question 6
+
+Try the command `plotellipses()` on the PCA results. What can you say?
+
+
+**Solution question 6**
+
+```{r}
+plotellipses(res.PCA)
+```
+If several qualitative variables are available, there will be as many graphs as qualitative variables. And on
+each graph the confidence ellipses around the categories of a categorical variable.
+
+We observe that the barycenters of the two competitions (Decastar and Olympic) are different, but that this is not significant.
+
+**End of solution question 6** 
+
+
+Bonus: in report you may want to do beautiful plots! Here are some commands you can use.
+
+
+```{r}
+plot.PCA(res.PCA, choix = "ind") # choix: meaning you only want to represent the "ind" plot, you can also choose to have only the "var"
+plot.PCA(res.PCA, choix = "ind", habillage = "Competition",  cex = 0.7) # choose the variables that will do the color, here a qualitative variable
+plot.PCA(res.PCA, choix = "ind",habillage = "Rank",  cex = 0.7) # choose the variables that will do the color, here a quantitative variable
+
+plot.PCA(res.PCA, choix = "ind", habillage = ncol(decathlon), cex = 0.7, autoLab = "no") # Different labels
+
+plot.PCA(res.PCA, select = "cos2 0.8") # put a threshold on the ind that have a high cos2
+plot.PCA(res.PCA, select = "contrib 10")
+plot.PCA(res.PCA, choix = "var", select = "contrib 8", unselect = 0) 
+plot.PCA(res.PCA, choix = "var", select = c("400m", "1500m"))
+```
+
+
+Note that you can also use the command `Factoinvestigate()` that does the 
+
+```{r}
+library(FactoInvestigate)
+Investigate(res.PCA)
+```
+
+
+
+## FactoShiny
+
+\texttt{FactoShiny} is a graphical interface to the \texttt{FactoMineR} package to plot interactive plots. Therefore the underlying tools are the same as we saw previously. But this graphical interface can help you while working on data, and also to present in a funny way your data to a team. In this part we keep the same decathlon data.
+
+
+To test it on your own, you can load the \texttt{Factoshiny} library and use the command \texttt{PCAshiny}.
+
+Tip: 
+
+- If you use Mac you don't have a working Tcl/Tk by default, while it is needed for this package. So don't worry if you see an error while installing it! Go in the console and type \texttt{brew install tcl-tk} (if you use brew, what we recommend for Mac). The error can be quite complex as explained here\footnote{https://swvanderlaan.github.io/post/getting-r-with-tcl-tk-on-my-mac/}.
+
+# Clustering
+
+## Hierarchical Cluster Analysis (HCA)
+
+or Classification Ascendante Hiérarchique (CAH) in French!
+
+### Question 1
+1. Explain the general principle. Do you need to scale your data or not? (explain why)
+Launch a HCA on the decathlon data using the package `cluster` and the function `agnes()`. You can visualize your results using the function `plot()`. Be careful to use the ward distance.
+
+
+```{r}
+library(cluster)
+?agnes
+```
+
+
+
+
+
+**Solution question 1**
+Cf. class 2.
+It is very important to normalize because units are different in this data set. And the clustering is grounded on comparing distance between units. It is the same reasoning as the PCA question. Remember that you can use the command `scale()` to scale your data in R. 
+
+```{r}
+library(cluster)
+classification <- agnes(scale(decathlon[,1:10]), method = "ward")
+```
+
+```{r}
+plot(classification ,xlab="Individu", which.plot=2, main="Dendrogramme")
+```
+**End of solution question 1**
+
+### Question 2
+As seen in class, a challenge is to cut the tree (corresponds to choosing the number of classes). Using the result you had and the function `as.hclust` you can observe the height where two classes are merged. How can you use this result?
+Once you know where you want to cut your tree, you can use the function `cutree` with the number of classes you want to keep.
+
+**Solution question 2**
+```{r}
+height <- as.hclust(classification)
+plot(rev(height$height), type = "h", ylab = "hauteurs")
+```
+
+The most obvious gap is between 5 to 6 classes. So a good choix could be to choose this one.
+You can also choose the gap between 3 to 4 because it is still important, and will give use still an important number of individus in each class.
+
+```{r}
+classe <- cutree(classification, k = 4)
+```
+
+
+**End of solution question 2**
+
+### Question 3
+
+Once you decided a certain number of class, how can you describe the class? 
+For example which variables characterize the classes you have?
+
+Tips: you can use the function `catdes()`
+
+You can also use the paragons of the classes to describe the classes.
+
+**Solution question 3**
+
+We first try to understand which variables are linked with classes.
+
+First, you need to bind your classification result to the initial data frame:
+```{r}
+# build a new data frame with the labels
+decathlon.with.classif <- cbind(decathlon, classe = as.factor(classe))
+```
+
+```{r}
+catdes(decathlon.with.classif, num.var = 14)
+```
+
+This function catdes gives you first the variables that are the most related to the class variable. Here the variable Points is the most interesting one to explain classes.
+
+For example in class 2, individuals are faster on 1500m than the global group of people. 3 other variables characterize well this group (400m, 110m, and 100m). These athletes are also faster in this discipline than others.
+Remember that a v-test higher than 2 (in absolute value) means that the mean of the class is statistically significantly different from the global mean.
+
+```{r}
+plot(catdes(decathlon.with.classif, num.var = 14), show = "all", level = 0.05, cex = 3)
+```
+
+
+
+After this, it is also possible to use the parangon of each class to interpret the class.
+
+**End of solution question 3**
+
+## Hierarchical Clustering on Principal Components (HCPC)
+
+or Classification Hiérarchique sur Composantes Principales in French!
+
+
+### Open question (on your own)
+
+It is also possible to perform a clustering on the variables obtained after a PCA analysis. For this you can use the `HCPC()` function. On your own, try to do this analysis with plot and quantitative analysis.
+
+Try to have the plot(s) you prefer to present your results. You can find a documentation here: http://www.imsbio.co.jp/RGM/R_rdfile?f=FactoMineR/man/plot.HCPC.Rd&d=R_CC
+
+**Solution question**
+```{r}
+# you can use your previous result, or launch again a PCA step.
+res.pca <- PCA(decathlon, quanti.sup=11:12, quali.sup=13, graph=F)
+res.pca$eig
+
+```
+
+From that you observe that you need to have the 8 first components to have 95% of the variance explained.
+
+```{r}
+# be careful  to the new option
+res.pca <- PCA(decathlon, quanti.sup = 11:12, ncp = 8, quali.sup = 13, graph = F)
+
+res.hcpc <- HCPC(res.pca, consol = FALSE,  graph=FALSE) # if consol is TRUE, it means that you allow a consolidation with K means after cutting the tree
+```
+
+```{r}
+plot(res.hcpc, choice = "tree") ## tree
+```
+You can observe that a cut is proposed by the tool when launching with `graph = TRUE`. It is tree. You can also see it when plotting the tree.
+
+```{r}
+plot(res.hcpc, choice = "map") ## map
+```
+Note: another library exist to plot your result, this library is called `factoextra`. 
+```{r}
+library(factoextra)
+fviz_cluster(res.hcpc,
+             repel = TRUE,            # Avoid label overlapping
+             show.clust.cent = TRUE,  # Show cluster centers
+             palette = "jco",         # Color palette see ?ggpubr::ggpar
+             ggtheme = theme_minimal(),
+             main = "Factor map"
+             )
+```
+
+Here we observe that classes 2 and 3 are not so different on this view. We can construct this plot on dimension 3 and 4 to see the difference. Here, the clustering algorithm looks at all the dimension to create clusters.
+
+```{r}
+plot(res.hcpc, choice = "map", axes = c(3,4), ind.names = TRUE, draw.tree = FALSE, centers.plot = TRUE) ## map
+```
+
+
+```{r}
+res.hcpc$desc.axes
+```
+
+From this, we obtain the classes description by axes. It allows to see that class 1 present significatively lower values of dimension 1. Class 2 presents significatively lower values of dimension 3. Classes 3 presents higher values of dimension 3 and lower values for dimension 2. And class 4 has higher values on dimension 1. From this, it seems that a interesting representation can be obtained when plotting the results on axes 1 and 3 to have a representation of the cluster.
+
+```{r}
+plot(res.hcpc, choice = "map", axes = c(1,3), ind.names = TRUE, draw.tree = FALSE, centers.plot = TRUE) ## map
+```
+
+Finally, we can highlight the parangon of each class. It is a good way to illustrate what is a "typical" member of the class.
+
+```{r}
+# command to vizualize parangon
+res.hcpc$desc.ind$para
+```
+
+For the class 1, the parangon is Uldal, who is at a distance 1.43 from the barycenter of the class. Then you have Barras, Karlivans, and so on.
+For the second class it is Hernu. And so on.
+
+One can also use the specificity, which are individuals that are the further possibles from other classes (more precisely the further away from other barycenter). For this the command is also simple:
+
+```{r}
+res.hcpc$desc.ind$dist
+```
+Here you can read that Casarsa is the individual from class 1 that is the further away from the other barycenters. In particular the closest barycenter is at a distance 5.08. You can interpret it as "Casarsa is really specific to class 1, it could not be classified in another class." For class 2 the equivalent is Smith.
+
+**End of solution question**
+
+
+
