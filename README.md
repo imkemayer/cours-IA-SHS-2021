@@ -7,7 +7,7 @@ This repository gathers the slides for the courses AI & Humanities (Winter 2021)
 **Others courses**
 
 - [Julie Josse](http://juliejosse.com/), [Erwan Scornet](https://erwanscornet.github.io/), [Imke Mayer](https://www.imkemayer.com/)'s slides.
-- Florian Oswald, please see their incredible [repository](ScPoEconometrics)
+- Florian Oswald, please see his incredible [repository](ScPoEconometrics)
 - A Crash Course in Causality: Inferring Causal Effects from Observational Data on [coursera](https://www.coursera.org/learn/crash-course-in-causality)
 
 **Books**
