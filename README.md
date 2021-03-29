@@ -1,6 +1,6 @@
 # AI & SHS
 
-This repository gathers the slides for the courses AI & Humanities (Winter 2021) given to Master students majoring in social science (from [École des Chartes](http://www.chartes.psl.eu/) and [EHESS](https://www.ehess.fr/fr))
+This repository gathers the slides for the courses AI & Humanities (Winter 2021) given to Master students majoring in social science (from [École des Chartes](http://www.chartes.psl.eu/) and [EHESS](https://www.ehess.fr/fr)). Slides preview can be found [here](https://benedictecolnet.github.io/teaching/).
 
 🙏 *Credits for this class*:
 
