@@ -395,6 +395,22 @@ knitr::include_graphics("./img/matching_2.jpg")
 knitr::include_graphics("./img/intuition_IPW.jpg")
 ```
 <sub>Examples from *Crash course of causal inference*, Coursera</sub>
+---
+# IPW: implementation
+
+
+```{r}
+# p are the propensity scores
+ipw <- function(dataset, p) {
+  W <- dataset$W
+  Y <- dataset$Y
+  G <- ((W - p) * Y) / (p * (1 - p))
+  tau.hat <- mean(G)
+  se.hat <- sqrt(var(G) / (length(G) - 1))
+  c(ATE=tau.hat, lower_ci = tau.hat - 1.96 * se.hat, upper_ci = tau.hat + 1.96 * se.hat)
+}
+```
+
 
 ---
 # Practical session on your data
@@ -442,10 +458,47 @@ This is not a so easy problem `r emo::ji("exploding head")`
 What do you propose?
 
 ---
-# Matching
+# Matching (1)
+
+```{r}
+library(MatchIt)
+m.out <- matchit(SEX ~ RACE+EMPTYPE+NAME+JC.TITLE, method = "exact", data = salaries)
+salaries.matched <- match.data(m.out)
+
+# # you can check that each subgroup is the same respectively to the covariates chosen to match 
+engineer <- salaries.matched[salaries.matched$subclass == 10,]
+```
+---
+# Matching (2)
+
+```{r, echo = FALSE, warning = FALSE, message=FALSE}
+library(dplyr)
+```
+
+
+```{r}
+dim(salaries.matched)
+# salaries.matched %>%
+#   group_by(SEX) %>%
+#   select(one_of(covariates_to_keep)) %>%
+#   summarise_all(funs(mean))
+```
 
 ---
-# Measure ATE
+# Matching (3)
+
+Estimating effects and standard errors for continuous outcomes after full matching involves including the matching weights in the outcome model with a proper error evaluation.
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE}
+library('lmtest')
+library('sandwich')
+```
+
+
+```{r}
+fit1 <- lm(ANNUAL ~ SEX, data = salaries.matched, weights = weights)
+coeftest(fit1, vcov. = vcovCL, cluster = ~subclass)
+```
 
 ---
 ```{r, echo = FALSE}

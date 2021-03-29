@@ -386,6 +386,23 @@ There are several solutions, and will only consider two of them.
 
 &lt;img src="./img/intuition_IPW.jpg" width="80%" style="display: block; margin: auto;" /&gt;
 &lt;sub&gt;Examples from *Crash course of causal inference*, Coursera&lt;/sub&gt;
+---
+# IPW: implementation
+
+
+
+```r
+# p are the propensity scores
+ipw &lt;- function(dataset, p) {
+  W &lt;- dataset$W
+  Y &lt;- dataset$Y
+  G &lt;- ((W - p) * Y) / (p * (1 - p))
+  tau.hat &lt;- mean(G)
+  se.hat &lt;- sqrt(var(G) / (length(G) - 1))
+  c(ATE=tau.hat, lower_ci = tau.hat - 1.96 * se.hat, upper_ci = tau.hat + 1.96 * se.hat)
+}
+```
+
 
 ---
 # Practical session on your data
@@ -441,10 +458,70 @@ This is not a so easy problem 🤯
 What do you propose?
 
 ---
-# Matching
+# Matching (1)
+
+
+```r
+library(MatchIt)
+```
+
+```
+## Warning: package 'MatchIt' was built under R version 3.6.2
+```
+
+```r
+m.out &lt;- matchit(SEX ~ RACE+EMPTYPE+NAME+JC.TITLE, method = "exact", data = salaries)
+salaries.matched &lt;- match.data(m.out)
+
+# # you can check that each subgroup is the same respectively to the covariates chosen to match 
+engineer &lt;- salaries.matched[salaries.matched$subclass == 10,]
+```
+---
+# Matching (2)
+
+
+
+
+
+```r
+dim(salaries.matched)
+```
+
+```
+## [1] 108454     17
+```
+
+```r
+# salaries.matched %&gt;%
+#   group_by(SEX) %&gt;%
+#   select(one_of(covariates_to_keep)) %&gt;%
+#   summarise_all(funs(mean))
+```
 
 ---
-# Measure ATE
+# Matching (3)
+
+Estimating effects and standard errors for continuous outcomes after full matching involves including the matching weights in the outcome model with a proper error evaluation.
+
+
+
+
+
+```r
+fit1 &lt;- lm(ANNUAL ~ SEX, data = salaries.matched, weights = weights)
+coeftest(fit1, vcov. = vcovCL, cluster = ~subclass)
+```
+
+```
+## 
+## t test of coefficients:
+## 
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 53262.207   1335.221 39.8902  &lt; 2e-16 ***
+## SEXMALE       214.735     95.007  2.2602  0.02381 *  
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
 
 ---
 
