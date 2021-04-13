@@ -12,7 +12,7 @@ This repository gathers the slides for the courses AI & Humanities (Winter 2021)
 
 **Books**
 
-- **Régression avec R**, Pierre-André CornillonEric Matzner-Løber
+- **Régression avec R**, Pierre-André Cornillon, Eric Matzner-Løber
 - **Book of why**, Judea Pearl, Dana Mackenzie
 - **Mostly Harmless Econometrics**, Joshua Angrist
 
